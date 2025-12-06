@@ -11,13 +11,24 @@ import logging
 from slack_bolt.async_app import AsyncApp
 from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
 from anthropic import Anthropic
+import anthropic as anthropic_module
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from contextlib import asynccontextmanager
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging with verbose debug output
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()  # Output to console
+    ]
+)
 logger = logging.getLogger(__name__)
+
+# Also enable debug logging for httpx to see API requests
+logging.getLogger("httpx").setLevel(logging.DEBUG)
+logging.getLogger("anthropic").setLevel(logging.DEBUG)
 
 # Environment variables
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
@@ -119,13 +130,26 @@ Be concise but thorough. Highlight critical issues first. Use technical terminol
         
         # Agentic loop - continue until Claude stops calling tools
         while True:
-            response = anthropic.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=4096,
-                system=system_prompt,
-                tools=tools,
-                messages=messages
-            )
+            try:
+                logger.debug(f"Sending request to Anthropic API with model: claude-sonnet-4-5-20250929")
+                logger.debug(f"Messages: {json.dumps(messages, indent=2, default=str)}")
+                logger.debug(f"Tools available: {[t['name'] for t in tools]}")
+                
+                response = anthropic.messages.create(
+                    model="claude-sonnet-4-5-20250929",
+                    max_tokens=4096,
+                    system=system_prompt,
+                    tools=tools,
+                    messages=messages
+                )
+                
+                logger.debug(f"Response received - stop_reason: {response.stop_reason}")
+                logger.debug(f"Response content: {response.content}")
+                
+            except Exception as api_error:
+                logger.error(f"Anthropic API Error: {type(api_error).__name__}: {api_error}")
+                logger.error(f"Full exception details:", exc_info=True)
+                raise
             
             # Check if we need to process tool calls
             if response.stop_reason == "tool_use":
@@ -302,6 +326,14 @@ async def handle_status_command(ack, respond, command):
 
 async def main():
     """Start the Slack bot"""
+    logger.info("=" * 60)
+    logger.info("CVaaS Slack Bot Starting")
+    logger.info("=" * 60)
+    logger.info(f"Anthropic SDK version: {anthropic_module.__version__}")
+    logger.info(f"Model configured: claude-sonnet-4-5-20250929")
+    logger.info(f"MCP Server Path: {MCP_SERVER_PATH}")
+    logger.info("=" * 60)
+    
     handler = AsyncSocketModeHandler(app, SLACK_APP_TOKEN)
     logger.info("🚀 Starting CVaaS Slack Bot...")
     await handler.start_async()
