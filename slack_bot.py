@@ -136,7 +136,9 @@ Be concise but thorough. Highlight critical issues first. Use technical terminol
                 logger.debug(f"Tools available: {[t['name'] for t in tools]}")
                 
                 response = anthropic.messages.create(
-                    model="claude-sonnet-4-5-20250929",
+                    # model="claude-sonnet-4-20250514",
+                    # model="claude-sonnet-4-5-20250929",
+                    model="claude-opus-4-5-20251101",
                     max_tokens=4096,
                     system=system_prompt,
                     tools=tools,
