@@ -21,8 +21,13 @@ gh api -X PUT "repos/$repo/vulnerability-alerts" --silent
 gh api -X PUT "repos/$repo/automated-security-fixes" --silent
 echo "Dependabot alerts and security updates: on"
 
-# Private vulnerability reporting exists only for public repos.
+# Secret scanning, push protection and private vulnerability reporting are
+# free only for public repos; personal accounts cannot enable them on private ones.
 if [ "$(gh api "repos/$repo" --jq .private)" = "false" ]; then
+  gh api -X PATCH "repos/$repo" --silent --input - <<'JSON'
+{"security_and_analysis": {"secret_scanning": {"status": "enabled"}, "secret_scanning_push_protection": {"status": "enabled"}}}
+JSON
+  echo "Secret scanning and push protection: on"
   gh api -X PUT "repos/$repo/private-vulnerability-reporting" --silent
   echo "Private vulnerability reporting: on"
 fi
