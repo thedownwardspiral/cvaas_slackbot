@@ -23,7 +23,8 @@ echo "Dependabot alerts and security updates: on"
 
 # Secret scanning, push protection and private vulnerability reporting are
 # free only for public repos; personal accounts cannot enable them on private ones.
-if [ "$(gh api "repos/$repo" --jq .private)" = "false" ]; then
+# Compare against "public": an org's internal repos also report private=false.
+if [ "$(gh api "repos/$repo" --jq .visibility)" = "public" ]; then
   gh api -X PATCH "repos/$repo" --silent --input - <<'JSON'
 {"security_and_analysis": {"secret_scanning": {"status": "enabled"}, "secret_scanning_push_protection": {"status": "enabled"}}}
 JSON
